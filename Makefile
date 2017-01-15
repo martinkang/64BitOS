@@ -22,16 +22,19 @@ Kernel32:
 	@echo ====================== Build Complete =====================
 	@echo
 
-Disk.img: BootLoader/BootLoader.bin
+Disk.img: BootLoader/BootLoader.bin Kernel32/Kernel32.bin
 	@echo
 	@echo ================= Disk Image Build Start ==================
 	@echo
-	cp BootLoader/BootLoader.bin Disk.img
+
+	Utility/ImageMaker/ImageMaker.exe $^
+
 	@echo
 	@echo ================== All Build complete =====================
 	@echo
 
 clean:
 	make -C BootLoader clean
+	make -C Kernel32 clean
 	rm -f Disk.img
 
