@@ -69,7 +69,7 @@ int main( int argc, char * argv[] )
 
 	sKernel32SectorCnt = adjustInSectorSize( sTargetFd, sSrcSize );
 	TEST( sKernel32SectorCnt == -1 );
-	printf( "[INFO] %d size = [%d] and sector count =  [%d]\n",
+	printf( "[INFO] %s size = [%d] and sector count =  [%d]\n",
 			argv[2], sSrcSize, sKernel32SectorCnt );
 
 	
