@@ -1,5 +1,5 @@
 #ifndef __TYPES_H__
-#define __TYPES_H__
+#define __TYPES_H__ 
 
 #define BYTE  unsigned char
 #define WORD  unsigned short
@@ -16,10 +16,10 @@
 // 즉 패딩을 하지 않음
 
 // 비디오 모드 중 텍스트 모드 화면을 구성하는 자료 구조
-typedef struct kCharactorStruct
+typedef struct CharactorStruct
 {
-	BYTE bCharactor;
-	BYTE bAttribute;
+	BYTE mCharactor;
+	BYTE mAttribute;
 } CHARACTER;
 
 #pragma pack( pop )

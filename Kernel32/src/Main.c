@@ -34,6 +34,10 @@ void Main( void )
 		while( 1 );
 	}
 
+	// IA-32e 모드 커널을 위한 페이지 테이블 생성
+	printStringToScreen( 0, 6, "IA-32e Page Tables Initialize.............[    ]" );
+	initializePageTables();
+	printStringToScreen( 43, 6, "Pass" );
 
 	while( 1 );
 }
@@ -46,7 +50,7 @@ void printStringToScreen( int aX, int aY, const char * aString )
 	sScreen += ( aY * 80 ) + aX;
 	while( aString[i] != 0 )
 	{
-		sScreen[i].bCharactor = aString[i];
+		sScreen[i].mCharactor = aString[i];
 		i++;
 	}
 }
