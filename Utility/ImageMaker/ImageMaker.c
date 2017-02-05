@@ -17,7 +17,9 @@
 
 int openFile( char * aPath, int aFlags, int aMode );
 int adjustInSectorSize( int aFd, int aSrcSize );
-int writeKernelInformation( int aTargetFd, int aKernelSectorCnt );
+int writeKernelInformation( int aTargetFd, 
+							int aTotalKernelSectorCnt,
+							int aKernel32SectoerCnt);
 int copyFile( int aSrcFd, int aTargetFd );
 
 int main( int argc, char * argv[] )
@@ -25,14 +27,15 @@ int main( int argc, char * argv[] )
 	int sSrcFd             = -1;
 	int sTargetFd          = -1;
 	int sBootLoaderSize    = 0;
-	int sKernel32SectorCnt = 0;
+	int sKernel32SectorCnt = 0;	
+	int sKernel64SectorCnt = 0;
 	int sSrcSize           = 0;
 	int sTargetOpen        = 0;
 	int sSrcOpen           = 0;
 
-	if ( argc < 3 )
+	if ( argc < 4 )
 	{
-		fprintf( stderr, "[ERROR] ImageMaker.exe BootLoader.bin Kernel32.bin\n" );
+		fprintf( stderr, "[ERROR] ImageMaker.exe BootLoader.bin Kernel32.bin Kernel64.bin\n" );
 		exit( -1 );
 	}
 	else
@@ -40,6 +43,7 @@ int main( int argc, char * argv[] )
 		/* noting to do */
 	}
 
+	// Disk.img 파일을 생성
 	sTargetFd = openFile( "Disk.img", O_RDWR | O_CREAT | O_TRUNC | O_BINARY, S_IREAD | S_IWRITE );
 	TEST( sTargetFd == -1 );
 	sTargetOpen = 1;
@@ -67,14 +71,37 @@ int main( int argc, char * argv[] )
 	sSrcOpen = 0;
 	close( sSrcFd );
 
+	// 파일 크기를 섹터 크기인 512 바이트로 밪추기 위해 나머지 부분을 0x00 으로 채움
 	sKernel32SectorCnt = adjustInSectorSize( sTargetFd, sSrcSize );
 	TEST( sKernel32SectorCnt == -1 );
 	printf( "[INFO] %s size = [%d] and sector count =  [%d]\n",
 			argv[2], sSrcSize, sKernel32SectorCnt );
 
 	
+	//------------------------------------------------------------------
+	// 64 비트 커널 파일을 열어서 모든 내용을 디스크 이미지 파일로 복사
+	//------------------------------------------------------------------
+	sTargetFd = open( "Disk.img", O_RDWR | O_CREATE | O_TRUNC | O_BINARY, S_IREAD | S_IWRITE );
+	TEST( sTargetFd == -1 );
+	sSrcOpen = 1;
+
+	sSrcSize = copyFile( sSrcFd, sTargetFd );
+	sSrcOpen = 0;
+	close( sSrcFd );
+	
+	// 파일 크기를 섹터 크기인 512 바이트로 밪추기 위해 나머지 부분을 0x00 으로 채움
+	sKernel64SectorCnt = adjustInSectorSize( sTargetFd, sSrcSize );
+	TEST( sKernel32SectorCnt == -1 );
+	printf( "[INFO] %s size = [%d] and sector count =  [%d]\n",
+			argv[3], sSrcSize, sKernel64SectorCnt );
+
+	//------------------------------------------------------------------
+	// 디스크 이미지에 커널 정보를 갱신
+	//------------------------------------------------------------------
 	printf( "[INFO] Start to write kernel information\n" );
-	TEST( writeKernelInformation( sTargetFd, sKernel32SectorCnt ) == -1 );
+	TEST( writeKernelInformation( sTargetFd, 
+								  sKernel32SectorCnt + sKernel64SectorCnt,
+								  sKernel32SectorCnt ) == -1 );
 	printf( "[INFO] Image file create complete\n" );
 
 	sTargetOpen = 0;
@@ -162,18 +189,20 @@ int adjustInSectorSize( int aFd, int aSrcSize )
 	return sSectorCnt;
 }
 
-int writeKernelInformation( int aTargetFd, int aKernelSectorCnt )
+int writeKernelInformation( int aTargetFd, 
+						    int aTotalKernelSectorCnt,
+						    int aKernel32SectorCnt)
 {
 	unsigned short sData = 0;
 	long sPosition = 0;
-	int sSrc = 0;
+	int sRC = 0;
 
 	sPosition = lseek( aTargetFd, 5, SEEK_SET );
 	if ( sPosition == -1 )
 	{
 		fprintf( stderr, "lseek fail. Return value = %d, errno = %d, %d\n",
 				sPosition, errno, SEEK_SET );
-		sSrc = -1;
+		sRC = -1;
 	}
 	else
 	{
@@ -181,12 +210,19 @@ int writeKernelInformation( int aTargetFd, int aKernelSectorCnt )
 		write( aTargetFd, &sData, 2 );
 
 		printf( "[INFO] Total sector count except boot loader [%d]\n",
-				aKernelSectorCnt );
+				aTotalKernelSectorCnt );
 
-		sSrc = 0;
+		sRC = 0;
 	}
 
-	return sSrc;
+	sData = (unsigned short)aTotalKernelSectorCnt;
+	write( aTargetFd, &sData, 2 );
+	sData = (unsigned short)aKernel32SectorCnt;
+	write( aTargetFd, &sData, 2 );
+	printf( "[INFO] Total sector count of protected mode kernel [%d]\n",
+				aKernel32SectorCnt );
+
+	return sRC;
 }
 
 int copyFile( int aSrcFd, int aTargetFd )
